@@ -4,7 +4,7 @@ version = "0.1.0"
 publish = false
 
 [dependencies]
-grpcio = { path = ".." }
+grpcio = { path = "..", features = ["secure"] }
 grpcio-sys = { path = "../grpc-sys" }
 grpcio-proto = { path = "../proto" }
 protobuf = "1.2"
