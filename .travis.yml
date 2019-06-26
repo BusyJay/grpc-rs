@@ -24,8 +24,12 @@ matrix:
   include:
   - os: osx
     rust: stable
+  - os: windows
+    rust: stable
 
 before_script:
+  - choco install golang
+  - go version
   - export GRPC_VERSION=1.17.2
   - export PATH="$PATH:$HOME/.cache/bin:$HOME/.cargo/bin"
   - GRPC_HEADER="$HOME/.cache/include/grpc/grpc.h"
