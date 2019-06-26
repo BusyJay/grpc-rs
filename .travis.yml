@@ -29,6 +29,7 @@ matrix:
 
 before_script:
   - choco install golang
+  - export PATH="/c/Go/bin:$PATH"
   - go version
   - export GRPC_VERSION=1.17.2
   - export PATH="$PATH:$HOME/.cache/bin:$HOME/.cargo/bin"
