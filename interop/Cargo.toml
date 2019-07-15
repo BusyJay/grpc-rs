@@ -4,10 +4,16 @@ version = "0.1.0"
 edition = "2018"
 publish = false
 
+[features]
+default = ["protobuf-codec"]
+protobuf-codec = ["grpcio/protobuf-codec"]
+prost-codec = ["grpcio/prost-codec"]
+
+
 [dependencies]
-grpcio = { path = ".." }
+grpcio = { path = "..", default-features = false }
 grpcio-sys = { path = "../grpc-sys" }
-grpcio-proto = { path = "../proto" }
+grpcio-proto = { path = "../proto", default-features = false }
 protobuf = "2.0"
 futures = "0.1"
 log = "0.3"

@@ -10,8 +10,8 @@ protobuf-codec = ["grpcio/protobuf-codec"]
 prost-codec = ["grpcio/prost-codec"]
 
 [dependencies]
-grpcio = { path = ".." }
-grpcio-proto = { path = "../proto" }
+grpcio = { path = "..", default-features = false }
+grpcio-proto = { path = "../proto", default-features = false }
 futures = "0.1"
 libc = "0.2"
 grpcio-sys = { path = "../grpc-sys" }
