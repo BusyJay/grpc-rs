@@ -58,14 +58,13 @@ pub mod pb_codec {
 
 #[cfg(feature = "prost-codec")]
 pub mod pr_codec {
-    use bytes::buf::BufMut;
     use prost::Message;
 
     use super::MessageReader;
     use crate::error::Result;
 
     #[inline]
-    pub fn ser<M: Message, B: BufMut>(msg: &M, buf: &mut B) {
+    pub fn ser<M: Message>(msg: &M, buf: &mut Vec<u8>) {
         msg.encode(buf).expect("Writing message to buffer failed");
     }
 
