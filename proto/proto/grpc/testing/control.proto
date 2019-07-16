@@ -22,24 +22,24 @@ package grpc.testing;
 enum ClientType {
   // Many languages support a basic distinction between using
   // sync or async client, and this allows the specification
-  SYNC_CLIENT = 0;
-  ASYNC_CLIENT = 1;
-  OTHER_CLIENT = 2; // used for some language-specific variants
+  SyncClient = 0;
+  AsyncClient = 1;
+  OtherClient = 2; // used for some language-specific variants
 }
 
 enum ServerType {
-  SYNC_SERVER = 0;
-  ASYNC_SERVER = 1;
-  ASYNC_GENERIC_SERVER = 2;
-  OTHER_SERVER = 3; // used for some language-specific variants
+  SyncServer = 0;
+  AsyncServer = 1;
+  AsyncGenericServer = 2;
+  OtherServer = 3; // used for some language-specific variants
 }
 
 enum RpcType {
-  UNARY = 0;
-  STREAMING = 1;
-  STREAMING_FROM_CLIENT = 2;
-  STREAMING_FROM_SERVER = 3;
-  STREAMING_BOTH_WAYS = 4;
+  Unary = 0;
+  Streaming = 1;
+  StreamingFromClient = 2;
+  StreamingFromServer = 3;
+  StreamingBothWays = 4;
 }
 
 // Parameters of poisson process distribution, which is a good representation
