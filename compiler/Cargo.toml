@@ -14,16 +14,13 @@ categories = ["network-programming"]
 [features]
 default = ["protobuf-codec"]
 protobuf-codec = ["protobuf-codegen", "protobuf"]
-prost-codec = ["prost-build", "prost", "prost-types", "derive-new", "tempfile"]
+prost-codec = ["prost-types", "prost"]
 
 [dependencies]
 protobuf = { version = "2.0", optional = true }
 protobuf-codegen = { version = "2.0", optional = true }
-prost = { version = "0.5", optional = true }
-prost-build = { version = "0.5", optional = true }
 prost-types = { version = "0.5", optional = true }
-derive-new = { version = "0.5", optional = true }
-tempfile = { version = "3.0", optional = true }
+prost = { version = "0.5", optional = true }
 
 [[bin]]
 name = "grpc_rust_plugin"

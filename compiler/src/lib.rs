@@ -12,7 +12,9 @@
 // limitations under the License.
 
 #[cfg(feature = "protobuf-codec")]
+#[path = "protobuf.rs"]
 pub mod codegen;
 #[cfg(feature = "prost-codec")]
-pub mod prost_codegen;
+#[path = "prost.rs"]
+pub mod codegen;
 mod util;
