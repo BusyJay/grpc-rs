@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option cc_enable_arenas = true;
+
+message Data {
+    bytes Payload = 1;
+}
+
+service TestService {
+    rpc DataStream(stream Data) returns (stream Data);
+}
