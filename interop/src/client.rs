@@ -111,11 +111,15 @@ impl Client {
             assert_eq!(resp.get_payload().get_body().len(), resp_size as usize);
         }
         future::poll_fn(|| sender.close()).wait().unwrap();
-        match receiver.into_future().wait() {
-            Ok((resp, _)) => assert!(resp.is_none()),
+        let r = match receiver.into_future().wait() {
+            Ok((resp, r)) => {
+                assert!(resp.is_none());
+                r
+            }
             Err((e, _)) => panic!("{:?}", e),
-        }
+        };
         println!("pass");
+        drop(r);
     }
 
     pub fn empty_stream(&self) {

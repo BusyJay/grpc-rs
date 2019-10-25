@@ -12,9 +12,8 @@
 // limitations under the License.
 
 use std::fmt::{self, Debug, Formatter};
-use std::sync::Arc;
 
-use super::Inner;
+use super::lock::PairHolder;
 use crate::call::{BatchContext, MessageReader, RpcStatusCode};
 use crate::error::Error;
 
@@ -33,15 +32,15 @@ pub enum BatchType {
 pub struct Batch {
     ty: BatchType,
     ctx: BatchContext,
-    inner: Arc<Inner<Option<MessageReader>>>,
+    holder: PairHolder<Option<MessageReader>>,
 }
 
 impl Batch {
-    pub fn new(ty: BatchType, inner: Arc<Inner<Option<MessageReader>>>) -> Batch {
+    pub fn new(ty: BatchType, holder: PairHolder<Option<MessageReader>>) -> Batch {
         Batch {
             ty,
             ctx: BatchContext::new(),
-            inner,
+            holder,
         }
     }
 
@@ -50,47 +49,35 @@ impl Batch {
     }
 
     fn read_one_msg(&mut self, success: bool) {
-        let task = {
-            let mut guard = self.inner.lock();
-            if success {
-                guard.set_result(Ok(self.ctx.recv_message()))
-            } else {
-                // rely on C core to handle the failed read (e.g. deliver approriate
-                // statusCode on the clientside).
-                guard.set_result(Ok(None))
-            }
-        };
-        task.map(|t| t.notify());
+        if success {
+            self.holder.set_result(Ok(self.ctx.recv_message()))
+        } else {
+            // rely on C core to handle the failed read (e.g. deliver approriate
+            // statusCode on the clientside).
+            self.holder.set_result(Ok(None))
+        }
     }
 
     fn finish_response(&mut self, succeed: bool) {
-        let task = {
-            let mut guard = self.inner.lock();
-            if succeed {
-                let status = self.ctx.rpc_status();
-                if status.status == RpcStatusCode::OK {
-                    guard.set_result(Ok(None))
-                } else {
-                    guard.set_result(Err(Error::RpcFailure(status)))
-                }
+        if succeed {
+            let status = self.ctx.rpc_status();
+            if status.status == RpcStatusCode::OK {
+                self.holder.set_result(Ok(None))
             } else {
-                guard.set_result(Err(Error::RemoteStopped))
+                self.holder.set_result(Err(Error::RpcFailure(status)))
             }
-        };
-        task.map(|t| t.notify());
+        } else {
+            self.holder.set_result(Err(Error::RemoteStopped))
+        }
     }
 
     fn handle_unary_response(&mut self) {
-        let task = {
-            let mut guard = self.inner.lock();
-            let status = self.ctx.rpc_status();
-            if status.status == RpcStatusCode::OK {
-                guard.set_result(Ok(self.ctx.recv_message()))
-            } else {
-                guard.set_result(Err(Error::RpcFailure(status)))
-            }
-        };
-        task.map(|t| t.notify());
+        let status = self.ctx.rpc_status();
+        if status.status == RpcStatusCode::OK {
+            self.holder.set_result(Ok(self.ctx.recv_message()))
+        } else {
+            self.holder.set_result(Err(Error::RpcFailure(status)))
+        }
     }
 
     pub fn resolve(mut self, success: bool) {
@@ -117,23 +104,19 @@ impl Debug for Batch {
 
 /// A promise used to resolve async shutdown result.
 pub struct Shutdown {
-    inner: Arc<Inner<()>>,
+    holder: PairHolder<()>,
 }
 
 impl Shutdown {
-    pub fn new(inner: Arc<Inner<()>>) -> Shutdown {
-        Shutdown { inner }
+    pub fn new(holder: PairHolder<()>) -> Shutdown {
+        Shutdown { holder }
     }
 
-    pub fn resolve(self, success: bool) {
-        let task = {
-            let mut guard = self.inner.lock();
-            if success {
-                guard.set_result(Ok(()))
-            } else {
-                guard.set_result(Err(Error::ShutdownFailed))
-            }
-        };
-        task.map(|t| t.notify());
+    pub fn resolve(mut self, success: bool) {
+        if success {
+            self.holder.set_result(Ok(()))
+        } else {
+            self.holder.set_result(Err(Error::ShutdownFailed))
+        }
     }
 }

@@ -668,7 +668,7 @@ impl ShareCall {
             return Err(Error::RpcFinished(self.status.clone()));
         }
 
-        task::check_alive(&self.close_f)
+        task::check_alive(&mut self.close_f)
     }
 }
 

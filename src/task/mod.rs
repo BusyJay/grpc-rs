@@ -19,101 +19,18 @@ mod promise;
 use std::fmt::{self, Debug, Formatter};
 use std::sync::Arc;
 
-use futures::task::{self, Task};
-use futures::{Async, Future, Poll};
-
 use self::callback::{Abort, Request as RequestCallback, UnaryRequest as UnaryRequestCallback};
 use self::executor::SpawnTask;
 use self::promise::{Batch as BatchPromise, Shutdown as ShutdownPromise};
 use crate::call::server::RequestContext;
 use crate::call::{BatchContext, Call, MessageReader};
 use crate::cq::CompletionQueue;
-use crate::error::{Error, Result};
 use crate::server::RequestCallContext;
 
 pub(crate) use self::executor::{Executor, Kicker, UnfinishedWork};
-pub use self::lock::SpinLock;
+pub(crate) use self::lock::check_alive;
+pub use self::lock::{PairFuture as CqFuture, SpinLock};
 pub use self::promise::BatchType;
-
-/// A handle that is used to notify future that the task finishes.
-pub struct NotifyHandle<T> {
-    result: Option<Result<T>>,
-    task: Option<Task>,
-    stale: bool,
-}
-
-impl<T> NotifyHandle<T> {
-    fn new() -> NotifyHandle<T> {
-        NotifyHandle {
-            result: None,
-            task: None,
-            stale: false,
-        }
-    }
-
-    /// Set the result and notify future if necessary.
-    fn set_result(&mut self, res: Result<T>) -> Option<Task> {
-        self.result = Some(res);
-
-        self.task.take()
-    }
-}
-
-type Inner<T> = SpinLock<NotifyHandle<T>>;
-
-fn new_inner<T>() -> Arc<Inner<T>> {
-    Arc::new(SpinLock::new(NotifyHandle::new()))
-}
-
-/// Get the future status without the need to poll.
-///
-/// If the future is polled successfully, this function will return None.
-/// Not implemented as method as it's only for internal usage.
-pub fn check_alive<T>(f: &CqFuture<T>) -> Result<()> {
-    let guard = f.inner.lock();
-    match guard.result {
-        None => Ok(()),
-        Some(Err(Error::RpcFailure(ref status))) => {
-            Err(Error::RpcFinished(Some(status.to_owned())))
-        }
-        Some(Ok(_)) | Some(Err(_)) => Err(Error::RpcFinished(None)),
-    }
-}
-
-/// A future object for task that is scheduled to `CompletionQueue`.
-pub struct CqFuture<T> {
-    inner: Arc<Inner<T>>,
-}
-
-impl<T> CqFuture<T> {
-    fn new(inner: Arc<Inner<T>>) -> CqFuture<T> {
-        CqFuture { inner }
-    }
-}
-
-impl<T> Future for CqFuture<T> {
-    type Item = T;
-    type Error = Error;
-
-    fn poll(&mut self) -> Poll<T, Error> {
-        let mut guard = self.inner.lock();
-        if guard.stale {
-            panic!("Resolved future is not supposed to be polled again.");
-        }
-
-        if let Some(res) = guard.result.take() {
-            guard.stale = true;
-            return Ok(Async::Ready(res?));
-        }
-
-        // So the task has not been finished yet, add notification hook.
-        if guard.task.is_none() || !guard.task.as_ref().unwrap().will_notify_current() {
-            guard.task = Some(task::current());
-        }
-
-        Ok(Async::NotReady)
-    }
-}
 
 /// Future object for batch jobs.
 pub type BatchFuture = CqFuture<Option<MessageReader>>;
@@ -132,9 +49,9 @@ pub enum CallTag {
 impl CallTag {
     /// Generate a Future/CallTag pair for batch jobs.
     pub fn batch_pair(ty: BatchType) -> (BatchFuture, CallTag) {
-        let inner = new_inner();
-        let batch = BatchPromise::new(ty, inner.clone());
-        (CqFuture::new(inner), CallTag::Batch(batch))
+        let (f, h) = self::lock::pair();
+        let batch = BatchPromise::new(ty, h);
+        (f, CallTag::Batch(batch))
     }
 
     /// Generate a CallTag for request job. We don't have an eventloop
@@ -145,9 +62,9 @@ impl CallTag {
 
     /// Generate a Future/CallTag pair for shutdown call.
     pub fn shutdown_pair() -> (CqFuture<()>, CallTag) {
-        let inner = new_inner();
-        let shutdown = ShutdownPromise::new(inner.clone());
-        (CqFuture::new(inner), CallTag::Shutdown(shutdown))
+        let (f, h) = self::lock::pair();
+        let shutdown = ShutdownPromise::new(h);
+        (f, CallTag::Shutdown(shutdown))
     }
 
     /// Generate a CallTag for abort call before handler is called.
@@ -208,12 +125,14 @@ impl Debug for CallTag {
 
 #[cfg(test)]
 mod tests {
+    use futures::Future;
     use std::sync::mpsc::*;
     use std::sync::*;
     use std::thread;
 
     use super::*;
     use crate::env::Environment;
+    use crate::error::Error;
 
     #[test]
     fn test_resolve() {
