@@ -4002,6 +4002,9 @@ extern "C" {
         resource_quota: *mut grpc_resource_quota,
         new_max_threads: ::std::os::raw::c_int,
     );
+    pub fn grpc_resource_quota_used(
+        resource_quota: *const grpc_resource_quota,
+    ) -> usize;
 }
 extern "C" {
     #[doc = " Fetch a vtable for a grpc_channel_arg that points to a grpc_resource_quota"]

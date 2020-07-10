@@ -38,6 +38,20 @@ impl ResourceQuota {
     pub(crate) fn get_ptr(&self) -> *mut grpc_resource_quota {
         self.raw
     }
+
+    pub fn query(&self) -> usize {
+        unsafe { grpcio_sys::grpc_resource_quota_used(self.raw) }
+    }
+}
+
+impl Clone for ResourceQuota {
+    #[inline]
+    fn clone(&self) -> Self {
+        unsafe { grpcio_sys::grpc_resource_quota_ref(self.raw); }
+        ResourceQuota {
+            raw: self.raw,
+        }
+    }
 }
 
 impl Drop for ResourceQuota {
