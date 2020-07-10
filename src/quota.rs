@@ -62,3 +62,6 @@ impl Drop for ResourceQuota {
         }
     }
 }
+
+unsafe impl Send for ResourceQuota {}
+unsafe impl Sync for ResourceQuota {}
