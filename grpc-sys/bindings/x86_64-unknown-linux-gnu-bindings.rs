@@ -3995,6 +3995,10 @@ extern "C" {
     );
 }
 extern "C" {
+    #[doc = " Add a reference to a buffer pool"]
+    pub fn grpc_resource_quota_used(resource_quota: *const grpc_resource_quota) -> usize;
+}
+extern "C" {
     #[doc = " Fetch a vtable for a grpc_channel_arg that points to a grpc_resource_quota"]
     pub fn grpc_resource_quota_arg_vtable() -> *const grpc_arg_pointer_vtable;
 }
