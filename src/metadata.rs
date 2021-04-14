@@ -233,6 +233,10 @@ impl Metadata {
         }
         &[]
     }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut grpc_metadata {
+        self.0.metadata
+    }
 }
 
 impl Clone for Metadata {

@@ -29,6 +29,7 @@ extern crate log;
 mod auth_context;
 mod buf;
 mod call;
+mod call_v2;
 mod channel;
 mod client;
 mod codec;

@@ -6,7 +6,8 @@ pub mod server;
 use std::fmt::{self, Debug, Display};
 use std::pin::Pin;
 use std::sync::Arc;
-use std::{ptr, slice};
+use std::{ptr, slice, mem};
+use std::mem::MaybeUninit;
 
 use crate::grpc_sys::{self, grpc_call, grpc_call_error, grpcwrap_batch_context};
 use crate::{cq::CompletionQueue, Metadata, MetadataBuilder};
@@ -156,7 +157,7 @@ impl<Req, Resp> Method<Req, Resp> {
 #[derive(Debug, Clone)]
 pub struct RpcStatus {
     /// gRPC status code. `Ok` indicates success, all other values indicate an error.
-    code: RpcStatusCode,
+    pub(crate) code: RpcStatusCode,
 
     /// error message.
     message: String,
@@ -485,6 +486,16 @@ impl Call {
             grpc_sys::grpc_call_cancel(self.call, ptr::null_mut());
         }
     }
+
+    /// Allocate memory in the grpc_call arena.
+    ///
+    /// This memory is automatically discarded at call completion.
+    pub(crate) fn alloc<T>(&mut self) -> *mut MaybeUninit<T> {
+        unsafe {
+            // Returned address is always aligned to pointer size.
+            grpcio_sys::grpc_call_arena_alloc(self.call, mem::size_of::<T>()) as _
+        }
+    }
 }
 
 impl Drop for Call {
@@ -675,6 +686,10 @@ impl WriteFlags {
     /// Get whether compression is disabled.
     pub fn get_force_no_compress(self) -> bool {
         (self.flags & grpc_sys::GRPC_WRITE_NO_COMPRESS) != 0
+    }
+
+    pub(crate) fn flags(self) -> u32 {
+        self.flags
     }
 }
 

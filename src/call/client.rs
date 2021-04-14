@@ -36,9 +36,9 @@ pub fn change_flag(res: &mut u32, flag: u32, set: bool) {
 #[derive(Clone, Default)]
 pub struct CallOption {
     timeout: Option<Duration>,
-    write_flags: WriteFlags,
-    call_flags: u32,
-    headers: Option<Metadata>,
+    pub(crate) write_flags: WriteFlags,
+    pub(crate) call_flags: u32,
+    pub(crate) headers: Option<Metadata>,
 }
 
 impl CallOption {

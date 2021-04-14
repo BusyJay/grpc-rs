@@ -241,6 +241,10 @@ impl GrpcByteBuffer {
     pub unsafe fn from_raw(ptr: *mut grpc_byte_buffer) -> GrpcByteBuffer {
         GrpcByteBuffer(ptr)
     }
+
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut grpc_byte_buffer {
+        self.0
+    }
 }
 
 impl<'a> From<&'a [GrpcSlice]> for GrpcByteBuffer {
